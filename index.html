@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Quran Blue Night</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#050b14;           /* noir */
+      --panel:#0a1426;        /* bleu nuit */
+      --accent:#1f3b73;       /* bleu */
+      --accent2:#1fa971;      /* vert lumière */
+      --text:#e7ecf3;
+      --muted:#9fb0d0;
+      --glow:0 0 12px rgba(31,169,113,.75);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background:radial-gradient(1200px 600px at 20% -10%, #0e1b36, transparent), var(--bg);
+      color:var(--text); font-family:'Playfair Display', serif;
+    }
+    header{
+      padding:24px 20px; border-bottom:1px solid #0e2247;
+      background:linear-gradient(180deg, rgba(10,20,38,.9), rgba(5,11,20,.9));
+      position:sticky; top:0; z-index:10;
+    }
+    .brand{display:flex; align-items:center; gap:14px}
+    .logo{width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,#1f3b73,#0a1426); box-shadow:0 0 20px rgba(31,59,115,.6)}
+    .brand h1{margin:0; font-weight:600; letter-spacing:.5px}
+    .nav{margin-top:12px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px}
+    .nav select, .nav button{
+      background:var(--panel); color:var(--text); border:1px solid #143064; border-radius:10px; padding:10px 12px
+    }
+    .nav button{cursor:pointer}
+    .container{max-width:1200px; margin:0 auto; padding:18px}
+    .hero{
+      margin:22px 0; padding:28px; border-radius:18px; background:linear-gradient(180deg,#0b1833,#050b14);
+      border:1px solid #143064; box-shadow:0 20px 60px rgba(0,0,0,.35)
+    }
+    .hero h2{margin:0 0 8px 0}
+    .hero p{color:var(--muted)}
+    .reader{display:grid; grid-template-columns:1fr; gap:14px}
+    .ayat{
+      background:linear-gradient(180deg,#0b1833,#050b14); border:1px solid #143064; border-radius:16px; padding:18px;
+    }
+    .arabic{font-family:'Scheherazade New','Amiri',serif; font-size:32px; line-height:1.9; text-align:right}
+    .fr{margin-top:10px; font-size:16px; color:#dfe6ff}
+    .controls{display:flex; gap:10px; align-items:center; margin-top:10px}
+    .play{background:linear-gradient(135deg,#1f3b73,#143064); border:1px solid #2a4c96; color:#fff; border-radius:12px; padding:8px 14px; cursor:pointer}
+    .progress{flex:1; height:6px; background:#0e2247; border-radius:6px; overflow:hidden}
+    .bar{height:100%; width:0%; background:linear-gradient(90deg,#1fa971,#7ef2c2)}
+    .active{box-shadow:var(--glow); border-color:#1fa971}
+    footer{padding:30px; text-align:center; color:var(--muted)}
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <div class="brand">
+      <div class="logo"></div>
+      <h1>Quran Blue Night</h1>
+    </div>
+    <div class="nav">
+      <select id="surahSelect"></select>
+      <select id="juzSelect"></select>
+      <button id="loadBtn">Charger</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <h2>Lecture, Traduction & Récitation synchronisée</h2>
+    <p>Design noir & bleu nuit, polices élégantes arabe/français, récitation de <strong>Yasser Al‑Dosary</strong> avec surlignage lumineux vert suivant la voix.</p>
+  </section>
+
+  <section id="reader" class="reader"></section>
+</main>
+
+<footer>© Quran Blue Night — Inspiration visuelle: Quran.com</footer>
+
+<audio id="audio"></audio>
+
+<script>
+// -------- CONFIG --------
+const API = 'https://api.quran.com/api/v4';
+const RECITER_ID = 7; // Yasser Al-Dosary sur api.quran.com
+
+// -------- ELEMENTS --------
+const surahSelect = document.getElementById('surahSelect');
+const juzSelect = document.getElementById('juzSelect');
+const loadBtn = document.getElementById('loadBtn');
+const reader = document.getElementById('reader');
+const audio = document.getElementById('audio');
+
+let timings = [];
+let currentAyahIndex = 0;
+
+// -------- INIT --------
+(async function init(){
+  const surahs = await fetch(`${API}/chapters?language=fr`).then(r=>r.json());
+  surahs.chapters.forEach(s=>{
+    const o=document.createElement('option'); o.value=s.id; o.textContent=`${s.id}. ${s.name_simple}`; surahSelect.appendChild(o);
+  });
+  for(let i=1;i<=30;i++){ const o=document.createElement('option'); o.value=i; o.textContent=`Juz ${i}`; juzSelect.appendChild(o);}  
+})();
+
+// -------- LOAD SURAH --------
+loadBtn.onclick = async ()=>{
+  reader.innerHTML=''; timings=[]; currentAyahIndex=0;
+  const surahId = surahSelect.value || 1;
+  const verses = await fetch(`${API}/verses/by_chapter/${surahId}?language=fr&words=true&translations=33&audio=1&recitation=${RECITER_ID}`).then(r=>r.json());
+
+  verses.verses.forEach((v,i)=>{
+    const card=document.createElement('div'); card.className='ayat'; card.id=`a${i}`;
+    const ar=document.createElement('div'); ar.className='arabic'; ar.innerHTML=v.text_uthmani;
+    const fr=document.createElement('div'); fr.className='fr'; fr.textContent=v.translations[0]?.text || '';
+    const controls=document.createElement('div'); controls.className='controls';
+    const play=document.createElement('button'); play.className='play'; play.textContent='▶ Lire';
+    const prog=document.createElement('div'); prog.className='progress'; const bar=document.createElement('div'); bar.className='bar'; prog.appendChild(bar);
+    play.onclick=()=>playAyah(v.audio.url,i);
+    controls.append(play,prog);
+    card.append(ar,fr,controls);
+    reader.appendChild(card);
+  });
+};
+
+function playAyah(url,index){
+  document.querySelectorAll('.ayat').forEach(a=>a.classList.remove('active'));
+  const el=document.getElementById(`a${index}`); el.classList.add('active');
+  audio.src=url; audio.play();
+}
+
+// Progress & glow
+setInterval(()=>{
+  if(audio.duration){
+    const p=(audio.currentTime/audio.duration)*100;
+    const bar=document.querySelector('.ayat.active .bar'); if(bar) bar.style.width=p+'%';
+  }
+},200);
+</script>
+</body>
+  </html>
+  
